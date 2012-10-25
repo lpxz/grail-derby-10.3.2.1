@@ -1,0 +1,19 @@
+----------------------------------------------------------------
+2012-10-25 17:53:26.182 GMTD001 : [0] The Apache Software Foundation - Apache Derby - 10.3.2.1 - (599110), [1] c013800d-013a-990e-aa70-00000ea67d40, [2] /home/lpxz/eclipse/workspace/derby-10.3.2.1/DERBY2861, [3] 
+C005 : [0] 
+2012-10-25 17:53:26.483 GMT Thread[thread-1,5,main] (XID = 243), (SESSIONID = 4), (DATABASE = DERBY2861), (DRDAID = null), Cleanup action starting
+2012-10-25 17:53:26.483 GMT Thread[thread-1,5,main] (XID = 243), (SESSIONID = 4), (DATABASE = DERBY2861), (DRDAID = null), Failed Statement is: CREATE VIEW schema1.VIEW1 AS SELECT * FROM viewSource
+java.lang.NullPointerException
+	at org.apache.derby.iapi.sql.dictionary.TableDescriptor.getObjectName(TableDescriptor.java:806)
+	at org.apache.derby.impl.sql.depend.BasicDependencyManager.getPersistentProviderInfos(BasicDependencyManager.java:684)
+	at org.apache.derby.impl.sql.compile.CreateViewNode.bindViewDefinition(CreateViewNode.java:287)
+	at org.apache.derby.impl.sql.compile.CreateViewNode.bindStatement(CreateViewNode.java:181)
+	at org.apache.derby.impl.sql.GenericStatement.prepMinion(GenericStatement.java:314)
+	at org.apache.derby.impl.sql.GenericStatement.prepare(GenericStatement.java:88)
+	at org.apache.derby.impl.sql.conn.GenericLanguageConnectionContext.prepareInternalStatement(GenericLanguageConnectionContext.java:746)
+	at org.apache.derby.impl.jdbc.EmbedStatement.execute(EmbedStatement.java:579)
+	at org.apache.derby.impl.jdbc.EmbedStatement.execute(EmbedStatement.java:528)
+	at derby2861.ViewCreatorDropper.executeStatement(ViewCreatorDropper.java:95)
+	at derby2861.ViewCreatorDropper.run(ViewCreatorDropper.java:43)
+	at java.lang.Thread.run(Thread.java:619)
+Cleanup action completed
