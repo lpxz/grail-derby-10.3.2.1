@@ -376,8 +376,12 @@ public class TableDescriptor extends TupleDescriptor
 	 */
 	public void setReferencedColumnMap(FormatableBitSet referencedColumnMap)
 	{
-		this.referencedColumnMap = referencedColumnMap;
-		System.out.println(Thread.currentThread().getName()+" WRITE D ");
+//		synchronized (TableDescriptor.class) 
+		{//added by lpxz. 
+			this.referencedColumnMap = referencedColumnMap;
+			System.out.println(Thread.currentThread().getName()+" WRITE D ");
+		}
+	
 	}
 
 	/**
@@ -777,6 +781,11 @@ public class TableDescriptor extends TupleDescriptor
 	 */
 	public String getObjectName()
 	{
+		FormatableBitSet referencedColumnMaplocal=null ;
+//		synchronized (TableDescriptor.class) 
+		{ // added by lpxz. 
+			
+		
 		if (referencedColumnMap == null)
 		{
 			System.out.println(Thread.currentThread().getName()+" READ B1 ");
@@ -784,42 +793,38 @@ public class TableDescriptor extends TupleDescriptor
 		}
 		else
 		{
-			System.out.println(Thread.currentThread().getName()+" READ  B2 ");
-
-			String name = new String(tableName);
-			boolean first = true;
-			for (int i = 0; i < columnDescriptorList.size(); i++)
-			{
-				ColumnDescriptor cd = (ColumnDescriptor) columnDescriptorList.elementAt(i);
-				
-				//@added by Jeff Huang
-//				try{
-//					Thread.currentThread().sleep(1);
-//				}catch(Exception e)
-//				{
-//					e.printStackTrace();
-//				}
-				//USE Random?
-				if(java.lang.Math.random()<0.05)
-					System.out.print("");
-				
-				if (referencedColumnMap.isSet(cd.getPosition()))
-				{
-					if (first)
-					{
-						name += "(" + cd.getColumnName();
-						first = false;
-					}
-					else
-						name += ", " + cd.getColumnName();
-				}
-				System.out.println(Thread.currentThread().getName()+" READ  B3 ");
-
-			}
-			if (! first)
-				name += ")";
-			return name;
+			referencedColumnMaplocal = referencedColumnMap;
 		}
+		
+		}
+
+		System.out.println(Thread.currentThread().getName()+" READ  B2 ");
+
+		String name = new String(tableName);
+		boolean first = true;
+		for (int i = 0; i < columnDescriptorList.size(); i++)
+		{
+			ColumnDescriptor cd = (ColumnDescriptor) columnDescriptorList.elementAt(i);
+			
+
+			
+			if (referencedColumnMaplocal.isSet(cd.getPosition()))
+			{
+				if (first)
+				{
+					name += "(" + cd.getColumnName();
+					first = false;
+				}
+				else
+					name += ", " + cd.getColumnName();
+			}
+			System.out.println(Thread.currentThread().getName()+" READ  B3 ");
+
+		}
+		if (! first)
+			name += ")";
+		return name;
+		
 	}
 
 	/**

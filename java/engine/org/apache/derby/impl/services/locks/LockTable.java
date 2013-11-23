@@ -27,9 +27,6 @@ import org.apache.derby.iapi.services.locks.CompatibilitySpace;
 import org.apache.derby.iapi.services.locks.Latch;
 import org.apache.derby.iapi.services.locks.Lockable;
 
-/**
- * Interface which must be implemented by lock table classes.
- */
 interface LockTable {
 
     /**

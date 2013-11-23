@@ -1,8 +1,5 @@
 package derby2861;
 
-import org.apache.derby.jdbc.EmbeddedDriver;
-
-//10.3.2.1
 /**
  * This class tests the thread-safeness of the Derby database system, using the embedded driver.  With the
  * proper choice of main arguments, which are probably different for different machines, it will sometimes show an
@@ -31,39 +28,26 @@ public class Derby2861
 {
     /**
      * Invoke the test, providing a number of threads and a number of iterations.
-     * @param s arguments to the function, must be two integers: number of thread and number of iterations
+     * @param args arguments to the function, must be two integers: number of thread and number of iterations
      */
     static public void main(String[] args)
     {
-		long st,et;
-		st=System.currentTimeMillis();
-		
-		String[] s = new String[2];
-    	s[0]="2";
-    	s[1]="2";
-    	if(args.length==2)
-    	{
-    		s[0]=args[0];
-    		s[1]=args[1];
-    	}
-    	try
+    	//@TableDescriptor.getObjectName()   TableDescriptor.setReferencedColumnMap()
+        try
         {
-            Derby2861 instance = new Derby2861();
+        	Derby2861 instance = new Derby2861();
 
-            if (s.length < 2)
+            if (args.length < 2)
             {
                 System.out.println("Usage: main NUMBER_OF_THREADS NUMBER_OF_ITERATIONS");
                 System.exit(-1);
             }
-            instance.doit(Integer.parseInt(s[0]), Integer.parseInt(s[1]));
+            instance.doit(Integer.parseInt(args[0]), Integer.parseInt(args[1]));
         }
         catch (Throwable e)
         {
             e.printStackTrace();
         }
-		
-		et=System.currentTimeMillis();
-		System.out.println(et-st);	
     }
 
     /**
@@ -73,13 +57,11 @@ public class Derby2861
      */
     private Derby2861() throws ClassNotFoundException
     {
-        //Class.forName("org.apache.derby.jdbc.EmbeddedDriver");
+        Class.forName("org.apache.derby.jdbc.EmbeddedDriver");
 
-        EmbeddedDriver driver = new EmbeddedDriver();
-        
         try
         {
-            java.sql.DriverManager.getConnection("jdbc:derby:DERBY2861;create=true");
+            java.sql.DriverManager.getConnection("jdbc:derby:MTTESTDB;create=true");
         }
         catch (java.sql.SQLException e)
         {
@@ -93,42 +75,38 @@ public class Derby2861
      * @param numIterations the number of iterations to run each thread
      * @throws java.sql.SQLException thrown if there is an SQL error setting up the test
      */
-    private void doit(int numThreads, int numIterations) throws java.sql.SQLException
+    private void doit(int numThreads, int numIterations) throws Exception
     {
         try
         {
             executeStatement(getConnection(), "CREATE TABLE schemamain.SOURCETABLE (col1 int, col2 char(10), col3 varchar(20), col4 decimal(10,5))");
+            executeStatement(getConnection(), "CREATE VIEW viewSource AS SELECT col1, col2 FROM schemamain.SOURCETABLE");
         }
         catch (java.sql.SQLException e)
         {
             // Just report this...probably the table or view already exists
-            //System.out.println(e.getMessage());
+            System.out.println(e.getMessage());
         }
-        try
-        {
-        	executeStatement(getConnection(), "CREATE VIEW viewSource AS SELECT col1, col2 FROM schemamain.SOURCETABLE");
-        }catch(Exception e){}
-//        
-        
+
         Thread[] threads = new Thread[numThreads];
         for (int i = 0; i < numThreads; i++)
         {
             threads[i] = new Thread(new ViewCreatorDropper("schema1.VIEW" + i, "viewSource", "*", numIterations));
-            threads[i].setName("thread-"+i);
         }
+        
+        long start = System.currentTimeMillis();
         for (int i = 0; i < numThreads; i++)
         {
             threads[i].start();
         }
-		try {
-	        for (int i = 0; i < numThreads; i++)
-	        {
-	            threads[i].join();
-	        }
-		} catch (InterruptedException e) {
-			"reCrash_with".equals(e);
-			e.printStackTrace();
-		}
+        
+        for (int i = 0; i < numThreads; i++)
+        {
+            threads[i].join();
+        }
+        long end = System.currentTimeMillis();
+        System.out.println("duration: " +(end-start));
+        
 
     }
 
@@ -139,7 +117,7 @@ public class Derby2861
      */
     private java.sql.Connection getConnection() throws java.sql.SQLException
     {
-        return java.sql.DriverManager.getConnection("jdbc:derby:DERBY2861");
+        return java.sql.DriverManager.getConnection("jdbc:derby:MTTESTDB");
     }
 
     /**
@@ -158,8 +136,11 @@ public class Derby2861
             stmt = conn.createStatement();
             stmt.execute(sql);
         }
+        catch (Exception e) {
+			// TODO: handle exception
+		}
         finally
-        {
+        {  // some locks are not released!! you must throw the exception and terminate the execution.
             if (stmt != null)
             {
                 try
@@ -174,4 +155,78 @@ public class Derby2861
         }
     }
 
+    /**
+     * This class implements a run procedure to repeatedly create and drop a Derby view.  It is intended to be run
+     * on a thread to test whether it is thread-safe in derby to be concurrently creating and dropping views that
+     * reference the same
+     * underlying database object.
+     */
+    private class ViewCreatorDropper implements Runnable
+    {
+        /** The name of the view to create and drop */
+        String m_viewName;
+        /** The source (view) referenced by the created view */
+        String m_sourceName;
+        /** The SQL fragment specifying the columns to included in the created view */
+        String m_columns;
+        /** How many times to create/drop the view */
+        int m_iterations;
+
+        /**
+         * Constructs the runnable object for the test.
+         * @param viewName the name of the view to create and drop
+         * @param sourceName the source (view) referenced by the created view
+         * @param columns the SQL fragment specifying the columns to included in the created view
+         * @param iterations how many times to create/drop the view
+         * @throws java.sql.SQLException
+         */
+        public ViewCreatorDropper(String viewName, String sourceName, String columns, int iterations)
+        {
+            m_viewName = viewName;
+            m_sourceName = sourceName;
+            m_columns = columns;
+            m_iterations = iterations;
+        }
+
+        /**
+         * @see Thread#run()
+         */
+        public void run()
+        {
+            int i = 0;
+            try
+            {
+                java.sql.Connection conn = getConnection();
+                for (i = 0; i < m_iterations; i++)
+                {
+                    assert conn != null;
+                    //if (i % 5 == 0) System.out.println(" (" + Thread.currentThread() + " iteration " + i + ") ");
+                    executeStatement(conn, "CREATE VIEW " + m_viewName + " AS SELECT " + m_columns + " FROM " + m_sourceName);
+                    executeStatement(conn, "DROP VIEW " + m_viewName);
+                }
+            }
+            catch (java.sql.SQLException e)
+            {
+                // Grab up all the error message in one string, to guard against output from different threads being
+                // interleaved in the console.  (That might happen anyway, but so it goes.)
+                java.io.ByteArrayOutputStream bos = new java.io.ByteArrayOutputStream();
+                java.io.PrintStream p = new java.io.PrintStream(bos);
+                //p.println("" + Thread.currentThread() + " exception after " + i + "iterations:");
+                e.printStackTrace(p);
+                p.flush();
+
+                String msg = bos.toString();
+                System.out.print(msg);
+
+                // If we got the exception we were testing for, just quit.
+                if (msg.startsWith("java.lang.NullP"))
+                {
+                    System.out.println("Stop here.");
+                    System.exit(-1);
+                }
+            }
+            
+            System.out.println("end of running");
+        }
+    }
 }

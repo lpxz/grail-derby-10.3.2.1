@@ -78,7 +78,7 @@ class EmbedPooledConnection implements javax.sql.PooledConnection, BrokeredConne
     private String connString;
     
 	private Vector eventListener; // who wants to know I am closed or error
-
+   
 	EmbedConnection realConnection;
 	int defaultIsolationLevel;
 	private boolean defaultReadOnly;
